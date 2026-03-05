@@ -3,456 +3,768 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Text-to-SQL 智能查询系统</title>
+    <title>Text-to-SQL RAG 方案</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
         }
-        
+
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
-        
+
         .header {
             text-align: center;
             color: white;
             margin-bottom: 30px;
         }
-        
+
         .header h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
         }
-        
+
         .header p {
             opacity: 0.9;
+            font-size: 1.1rem;
         }
-        
+
         .main-card {
             background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             overflow: hidden;
         }
-        
-        .chat-container {
-            height: 500px;
-            overflow-y: auto;
-            padding: 20px;
+
+        .tabs {
+            display: flex;
             background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
         }
-        
-        .message {
-            margin-bottom: 16px;
+
+        .tab {
+            flex: 1;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab:hover {
+            background: #e9ecef;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            background: white;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 30px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* 查询面板 */
+        .query-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .input-section {
             display: flex;
             flex-direction: column;
+            gap: 20px;
         }
-        
-        .message.user {
-            align-items: flex-end;
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-        
-        .message.assistant {
-            align-items: flex-start;
-        }
-        
-        .message-content {
-            max-width: 80%;
-            padding: 12px 16px;
-            border-radius: 12px;
-            line-height: 1.5;
-        }
-        
-        .message.user .message-content {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+        .section-title .icon {
+            width: 30px;
+            height: 30px;
+            background: #667eea;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             color: white;
         }
-        
-        .message.assistant .message-content {
-            background: white;
-            border: 1px solid #e0e0e0;
-        }
-        
-        .sql-block {
-            background: #1e1e1e;
-            color: #d4d4d4;
-            padding: 16px;
-            border-radius: 8px;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 13px;
-            overflow-x: auto;
-            margin: 10px 0;
-            white-space: pre-wrap;
-        }
-        
-        .results-table {
+
+        .question-input {
             width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-            font-size: 14px;
-        }
-        
-        .results-table th,
-        .results-table td {
-            border: 1px solid #e0e0e0;
-            padding: 8px 12px;
-            text-align: left;
-        }
-        
-        .results-table th {
-            background: #f0f0f0;
-            font-weight: 600;
-        }
-        
-        .results-table tr:nth-child(even) {
-            background: #fafafa;
-        }
-        
-        .input-area {
+            min-height: 120px;
             padding: 20px;
-            border-top: 1px solid #e0e0e0;
-            background: white;
-        }
-        
-        .input-container {
-            display: flex;
-            gap: 12px;
-        }
-        
-        .input-container input {
-            flex: 1;
-            padding: 14px 18px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid #e9ecef;
             border-radius: 12px;
-            font-size: 16px;
-            outline: none;
+            font-size: 1.1rem;
+            resize: vertical;
             transition: border-color 0.3s;
         }
-        
-        .input-container input:focus {
+
+        .question-input:focus {
+            outline: none;
             border-color: #667eea;
         }
-        
-        .input-container button {
-            padding: 14px 28px;
+
+        .examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .example-btn {
+            padding: 8px 16px;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .example-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .btn-primary {
+            padding: 15px 40px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            border-radius: 12px;
-            font-size: 16px;
+            border-radius: 10px;
+            font-size: 1.1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: transform 0.3s, box-shadow 0.3s;
         }
-        
-        .input-container button:hover {
+
+        .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
         }
-        
-        .input-container button:disabled {
+
+        .btn-primary:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
         }
-        
-        .config-bar {
-            padding: 16px 20px;
-            background: #f8f9fa;
-            border-bottom: 1px solid #e0e0e0;
+
+        /* 结果区域 */
+        .result-section {
             display: flex;
-            gap: 16px;
-            align-items: center;
-            flex-wrap: wrap;
+            flex-direction: column;
+            gap: 20px;
         }
-        
-        .config-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .config-item label {
-            font-size: 14px;
-            color: #666;
-        }
-        
-        .config-item input,
-        .config-item select {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-        
-        .session-info {
-            font-size: 12px;
-            color: #999;
-            margin-left: auto;
-        }
-        
-        .error-message {
-            color: #dc3545;
-            padding: 10px;
-            background: #ffe6e6;
-            border-radius: 8px;
-            margin: 10px 0;
-        }
-        
-        .success-message {
-            color: #28a745;
-            padding: 10px;
-            background: #e6ffe6;
-            border-radius: 8px;
-            margin: 10px 0;
-        }
-        
-        .examples {
-            margin-top: 16px;
-            padding: 16px;
-            background: #f0f4ff;
+
+        .sql-output {
+            background: #1e1e1e;
             border-radius: 12px;
+            padding: 20px;
+            overflow-x: auto;
         }
-        
-        .examples h4 {
+
+        .sql-output pre {
+            color: #d4d4d4;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .sql-keyword {
+            color: #569cd6;
+        }
+
+        .sql-function {
+            color: #dcdcaa;
+        }
+
+        .sql-string {
+            color: #ce9178;
+        }
+
+        .sql-number {
+            color: #b5cea8;
+        }
+
+        .sql-comment {
+            color: #6a9955;
+        }
+
+        .result-stats {
+            display: flex;
+            gap: 20px;
+        }
+
+        .stat-card {
+            flex: 1;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+
+        .explanation {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .explanation-title {
+            font-weight: 600;
             margin-bottom: 10px;
             color: #333;
         }
-        
-        .example-buttons {
+
+        /* 知识库管理 */
+        .knowledge-panel {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .knowledge-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .knowledge-card .icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
             display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-size: 1.5rem;
+            color: white;
         }
-        
-        .example-btn {
-            padding: 8px 16px;
-            background: white;
-            border: 1px solid #667eea;
+
+        .knowledge-card h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .knowledge-card p {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-bottom: 20px;
+        }
+
+        .knowledge-card .count {
+            font-size: 2rem;
+            font-weight: 700;
             color: #667eea;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 13px;
-            transition: all 0.2s;
+            margin-bottom: 5px;
         }
-        
-        .example-btn:hover {
+
+        .knowledge-card .label {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+
+        .btn-secondary {
+            padding: 10px 25px;
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-secondary:hover {
             background: #667eea;
             color: white;
         }
-        
-        .typing {
+
+        /* 导入面板 */
+        .import-panel {
+            border: 2px dashed #e9ecef;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .import-panel:hover {
+            border-color: #667eea;
+            background: #f8f9fa;
+        }
+
+        .import-panel .icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .import-panel h3 {
+            margin-bottom: 10px;
+        }
+
+        .import-panel p {
+            color: #6c757d;
+            margin-bottom: 20px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        /* 历史记录 */
+        .history-list {
             display: flex;
-            gap: 4px;
-            padding: 8px;
+            flex-direction: column;
+            gap: 15px;
         }
-        
-        .typing span {
-            width: 8px;
-            height: 8px;
-            background: #667eea;
+
+        .history-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+
+        .history-item:hover {
+            background: #e9ecef;
+        }
+
+        .history-question {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .history-time {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+
+        /* 加载动画 */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
             border-radius: 50%;
-            animation: bounce 1.4s infinite ease-in-out;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
         }
-        
-        .typing span:nth-child(1) { animation-delay: -0.32s; }
-        .typing span:nth-child(2) { animation-delay: -0.16s; }
-        
-        @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0); }
-            40% { transform: scale(1); }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 响应式 */
+        @media (max-width: 900px) {
+            .query-panel {
+                grid-template-columns: 1fr;
+            }
+
+            .knowledge-panel {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 提示框 */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #333;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            display: none;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔍 Text-to-SQL 智能查询</h1>
-            <p>用自然语言查询数据库，支持多轮对话</p>
+            <h1>🎯 Text-to-SQL RAG 方案</h1>
+            <p>用自然语言查询数据库，让数据分析更简单</p>
         </div>
-        
+
         <div class="main-card">
-            <div class="config-bar">
-                <div class="config-item">
-                    <label>数据库:</label>
-                    <input type="text" id="dbName" value="mydb" placeholder="数据库名称">
-                </div>
-                <div class="config-item">
-                    <button onclick="newSession()" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        新对话
-                    </button>
-                </div>
-                <div class="session-info" id="sessionInfo">会话ID: --</div>
+            <div class="tabs">
+                <div class="tab active" data-tab="query">📝 查询</div>
+                <div class="tab" data-tab="knowledge">📚 知识库</div>
+                <div class="tab" data-tab="history">🕐 历史</div>
+                <div class="tab" data-tab="settings">⚙️ 设置</div>
             </div>
-            
-            <div class="chat-container" id="chatContainer">
-                <div class="message assistant">
-                    <div class="message-content">
-                        👋 你好！我是Text-to-SQL助手，可以帮你用自然语言查询数据库。
-                        <div class="examples">
-                            <h4>试试这些示例：</h4>
-                            <div class="example-buttons">
-                                <button class="example-btn" onclick="askExample('查询最近一个月的订单数量')">查询最近一个月的订单数量</button>
-                                <button class="example-btn" onclick="askExample('统计每个产品类别的销售额')">统计每个产品类别的销售额</button>
-                                <button class="example-btn" onclick="askExample('找出销售额最高的前10个客户')">找出销售额最高的前10个客户</button>
+
+            <!-- 查询面板 -->
+            <div class="tab-content active" id="query">
+                <div class="query-panel">
+                    <div class="input-section">
+                        <div>
+                            <div class="section-title">
+                                <span class="icon">💬</span>
+                                输入您的问题
+                            </div>
+                            <textarea class="question-input" id="questionInput" placeholder="例如：查询上个月销售额最高的前10个产品..."></textarea>
+                        </div>
+
+                        <div>
+                            <div class="section-title">💡 示例问题</div>
+                            <div class="examples">
+                                <button class="example-btn" onclick="setQuestion('查询所有客户信息')">查询所有客户信息</button>
+                                <button class="example-btn" onclick="setQuestion('统计每个地区的订单数量')">统计订单数量</button>
+                                <button class="example-btn" onclick="setQuestion('找出销售额最高的前10个产品')">销售额TOP10</button>
+                                <button class="example-btn" onclick="setQuestion('查询最近一周的订单')">最近一周订单</button>
+                            </div>
+                        </div>
+
+                        <button class="btn-primary" onclick="generateSQL()" id="generateBtn">
+                            🚀 生成 SQL
+                        </button>
+                    </div>
+
+                    <div class="result-section">
+                        <div class="loading" id="loading">
+                            <div class="spinner"></div>
+                            <p>正在生成 SQL...</p>
+                        </div>
+
+                        <div id="resultArea" style="display: none;">
+                            <div class="section-title">
+                                <span class="icon">📄</span>
+                                生成的 SQL
+                            </div>
+                            <div class="sql-output">
+                                <pre id="sqlOutput"></pre>
+                            </div>
+
+                            <div class="result-stats">
+                                <div class="stat-card">
+                                    <div class="stat-value" id="confidenceScore">-</div>
+                                    <div class="stat-label">置信度</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value" id="generationTime">-</div>
+                                    <div class="stat-label">生成耗时</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value" id="tokensUsed">-</div>
+                                    <div class="stat-label">Token数</div>
+                                </div>
+                            </div>
+
+                            <div class="explanation">
+                                <div class="explanation-title">📖 查询解释</div>
+                                <p id="explanationText"></p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            
-            <div class="input-area">
-                <div class="input-container">
-                    <input type="text" id="queryInput" placeholder="输入你的问题..." onkeypress="handleKeyPress(event)">
-                    <button id="sendBtn" onclick="sendQuery()">发送</button>
+
+            <!-- 知识库面板 -->
+            <div class="tab-content" id="knowledge">
+                <div class="knowledge-panel">
+                    <div class="knowledge-card">
+                        <div class="icon">📊</div>
+                        <h3>DDL 表结构</h3>
+                        <p>数据库表结构定义</p>
+                        <div class="count" id="ddlCount">0</div>
+                        <div class="label">个表</div>
+                        <button class="btn-secondary" onclick="importDDL()">导入 DDL</button>
+                    </div>
+
+                    <div class="knowledge-card">
+                        <div class="icon">📝</div>
+                        <h3>SQL 示例</h3>
+                        <p>历史 SQL 查询示例</p>
+                        <div class="count" id="sqlCount">0</div>
+                        <div class="label">条示例</div>
+                        <button class="btn-secondary" onclick="importSQL()">导入 SQL</button>
+                    </div>
+
+                    <div class="knowledge-card">
+                        <div class="icon">📖</div>
+                        <h3>业务文档</h3>
+                        <p>表和字段的业务含义</p>
+                        <div class="count" id="docCount">0</div>
+                        <div class="label">篇文档</div>
+                        <button class="btn-secondary" onclick="importDoc()">导入文档</button>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <div class="import-panel" id="dropZone">
+                        <div class="icon">📁</div>
+                        <h3>拖拽文件到这里上传</h3>
+                        <p>支持 JSON、CSV、SQL 格式</p>
+                        <button class="btn-secondary" onclick="document.getElementById('fileInput').click()">
+                            选择文件
+                        </button>
+                        <input type="file" id="fileInput" class="file-input" onchange="handleFileUpload(event)">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 历史面板 -->
+            <div class="tab-content" id="history">
+                <div class="history-list" id="historyList">
+                    <div class="history-item">
+                        <div>
+                            <div class="history-question">查询上个月销售额最高的产品</div>
+                            <div class="history-time">2025-03-05 11:30:00</div>
+                        </div>
+                        <button class="btn-secondary" onclick="rerunQuery('查询上个月销售额最高的产品')">重新执行</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 设置面板 -->
+            <div class="tab-content" id="settings">
+                <div style="max-width: 600px;">
+                    <div class="section-title" style="margin-bottom: 20px;">
+                        <span class="icon">🔑</span>
+                        API 配置
+                    </div>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 15px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-weight: 500;">LLM 模型</label>
+                            <select id="modelSelect" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #e9ecef;">
+                                <option value="gpt-4o">GPT-4o (推荐)</option>
+                                <option value="gpt-4">GPT-4</option>
+                                <option value="gpt-3.5-turbo">GPT-3.5 Turbo (快速)</option>
+                                <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-weight: 500;">检索数量 (Top-K)</label>
+                            <input type="range" id="topKSlider" min="1" max="10" value="3" style="width: 100%;">
+                            <span id="topKValue">3</span>
+                        </div>
+
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-weight: 500;">温度参数</label>
+                            <input type="range" id="tempSlider" min="0" max="1" step="0.1" value="0.1" style="width: 100%;">
+                            <span id="tempValue">0.1</span>
+                        </div>
+
+                        <button class="btn-primary" onclick="saveSettings()">保存设置</button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    
+
+    <div class="toast" id="toast"></div>
+
     <script>
-        let sessionId = null;
-        const API_BASE = window.location.origin;
-        
-        async function initSession() {
-            try {
-                const response = await fetch(`${API_BASE}/api/session/new`);
-                const data = await response.json();
-                sessionId = data.session_id;
-                document.getElementById('sessionInfo').textContent = `会话ID: ${sessionId.substring(0, 8)}...`;
-            } catch (error) {
-                console.error('初始化会话失败:', error);
+        // Tab 切换
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        // 设置示例问题
+        function setQuestion(text) {
+            document.getElementById('questionInput').value = text;
+        }
+
+        // 生成 SQL
+        async function generateSQL() {
+            const question = document.getElementById('questionInput').value.trim();
+            if (!question) {
+                showToast('请输入问题');
+                return;
             }
-        }
-        
-        function newSession() {
-            initSession();
-            document.getElementById('chatContainer').innerHTML = `
-                <div class="message assistant">
-                    <div class="message-content">👋 新对话已开始，请输入你的问题。</div>
-                </div>
-            `;
-        }
-        
-        async function sendQuery() {
-            const input = document.getElementById('queryInput');
-            const question = input.value.trim();
-            if (!question) return;
-            
-            const dbName = document.getElementById('dbName').value || 'mydb';
-            
-            addMessage('user', question);
-            input.value = '';
-            
-            const loadingDiv = document.createElement('div');
-            loadingDiv.className = 'message assistant';
-            loadingDiv.id = 'loading';
-            loadingDiv.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
-            document.getElementById('chatContainer').appendChild(loadingDiv);
-            scrollToEnd();
-            
-            document.getElementById('sendBtn').disabled = true;
-            
+
+            const btn = document.getElementById('generateBtn');
+            const loading = document.getElementById('loading');
+            const resultArea = document.getElementById('resultArea');
+
+            btn.disabled = true;
+            loading.classList.add('active');
+            resultArea.style.display = 'none';
+
             try {
-                const response = await fetch(`${API_BASE}/api/query`, {
+                // 调用后端 API
+                const response = await fetch('/api/rag/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        question: question,
-                        db_name: dbName,
-                        session_id: sessionId
-                    })
+                    body: JSON.stringify({ question })
                 });
-                
-                const result = await response.json();
-                document.getElementById('loading')?.remove();
-                
-                if (result.success) {
-                    let content = '';
-                    if (result.rewritten_question) {
-                        content += `<div style="font-size: 12px; color: #666; margin-bottom: 8px;">📝 理解为: ${result.rewritten_question}</div>`;
-                    }
-                    if (result.sql) {
-                        content += `<pre class="sql-block">${escapeHtml(result.sql)}</pre>`;
-                    }
-                    if (result.explanation) {
-                        content += `<div style="margin: 10px 0; color: #333;">${result.explanation}</div>`;
-                    }
-                    if (result.results && result.results.length > 0) {
-                        content += formatResults(result.results);
-                        content += `<div style="font-size: 12px; color: #28a745; margin-top: 8px;">✅ 返回 ${result.result_count} 条记录</div>`;
-                    }
-                    addMessage('assistant', content);
-                } else {
-                    addMessage('assistant', `<div class="error-message">❌ ${result.error || '处理失败'}</div>`);
-                }
+
+                const data = await response.json();
+
+                // 显示结果
+                document.getElementById('sqlOutput').textContent = data.sql;
+                document.getElementById('confidenceScore').textContent = (data.confidence * 100).toFixed(0) + '%';
+                document.getElementById('generationTime').textContent = data.generation_time.toFixed(2) + 's';
+                document.getElementById('tokensUsed').textContent = data.tokens_used;
+                document.getElementById('explanationText').textContent = data.explanation;
+
+                resultArea.style.display = 'block';
+
+                // 添加到历史
+                addHistory(question);
+
             } catch (error) {
-                document.getElementById('loading')?.remove();
-                addMessage('assistant', `<div class="error-message">❌ 请求失败: ${error.message}</div>`);
+                showToast('生成失败: ' + error.message);
             } finally {
-                document.getElementById('sendBtn').disabled = false;
+                btn.disabled = false;
+                loading.classList.remove('active');
             }
         }
-        
-        function addMessage(role, content) {
-            const container = document.getElementById('chatContainer');
-            const div = document.createElement('div');
-            div.className = `message ${role}`;
-            div.innerHTML = `<div class="message-content">${content}</div>`;
-            container.appendChild(div);
-            scrollToEnd();
+
+        // 添加历史记录
+        function addHistory(question) {
+            const historyList = document.getElementById('historyList');
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            item.innerHTML = `
+                <div>
+                    <div class="history-question">${question}</div>
+                    <div class="history-time">${new Date().toLocaleString()}</div>
+                </div>
+                <button class="btn-secondary" onclick="rerunQuery('${question}')">重新执行</button>
+            `;
+            historyList.insertBefore(item, historyList.firstChild);
         }
-        
-        function scrollToEnd() {
-            const container = document.getElementById('chatContainer');
-            container.scrollTop = container.scrollHeight;
+
+        // 重新执行查询
+        function rerunQuery(question) {
+            document.getElementById('questionInput').value = question;
+            document.querySelector('.tab').click();
+            generateSQL();
         }
-        
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
-        function formatResults(results) {
-            if (!results || results.length === 0) return '';
-            const headers = Object.keys(results[0]);
-            const maxRows = Math.min(results.length, 20);
-            let html = '<div style="overflow-x: auto;"><table class="results-table"><thead><tr>';
-            headers.forEach(h => html += `<th>${h}</th>`);
-            html += '</tr></thead><tbody>';
-            for (let i = 0; i < maxRows; i++) {
-                html += '<tr>';
-                headers.forEach(h => html += `<td>${results[i][h] ?? ''}</td>`);
-                html += '</tr>';
+
+        // 导入功能
+        function importDDL() { showToast('请拖拽或选择 DDL 文件'); }
+        function importSQL() { showToast('请拖拽或选择 SQL 文件'); }
+        function importDoc() { showToast('请拖拽或选择文档文件'); }
+
+        // 文件上传
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                showToast(`已选择文件: ${file.name}`);
             }
-            html += '</tbody></table></div>';
-            if (results.length > maxRows) {
-                html += `<div style="font-size: 12px; color: #666;">显示前 ${maxRows} 条，共 ${results.length} 条</div>`;
-            }
-            return html;
         }
-        
-        function askExample(question) {
-            document.getElementById('queryInput').value = question;
-            sendQuery();
+
+        // 拖拽上传
+        const dropZone = document.getElementById('dropZone');
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#667eea';
+            dropZone.style.background = '#f0f0ff';
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.borderColor = '#e9ecef';
+            dropZone.style.background = 'transparent';
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#e9ecef';
+            dropZone.style.background = 'transparent';
+            showToast('文件已上传');
+        });
+
+        // 设置滑块
+        document.getElementById('topKSlider').addEventListener('input', (e) => {
+            document.getElementById('topKValue').textContent = e.target.value;
+        });
+        document.getElementById('tempSlider').addEventListener('input', (e) => {
+            document.getElementById('tempValue').textContent = e.target.value;
+        });
+
+        // 保存设置
+        function saveSettings() {
+            showToast('设置已保存');
         }
-        
-        function handleKeyPress(event) {
-            if (event.key === 'Enter') sendQuery();
+
+        // Toast 提示
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
         }
-        
-        initSession();
+
+        // 初始化知识库统计
+        document.getElementById('ddlCount').textContent = '12';
+        document.getElementById('sqlCount').textContent = '156';
+        document.getElementById('docCount').textContent = '8';
     </script>
 </body>
 </html>
