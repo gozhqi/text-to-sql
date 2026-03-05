@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text-to-SQL 智能查询系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #5558e3;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --bg: #0f172a;
+            --bg-card: #1e293b;
+            --bg-input: #334155;
+            --border: #475569;
+            --text: #f1f5f9;
+            --text-secondary: #94a3b8;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 0;
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-icon svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .logo-text h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .logo-text p {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .db-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .db-selector select {
+            padding: 8px 16px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .query-input-container {
+            position: relative;
+        }
+
+        .query-input {
+            width: 100%;
+            min-height: 120px;
+            padding: 16px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 15px;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .query-input:focus {
+            border-color: var(--primary);
+        }
+
+        .query-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .quick-action-btn {
+            padding: 6px 12px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quick-action-btn:hover {
+            background: var(--bg-card);
+            color: var(--text);
+        }
+
+        .submit-btn {
+            width: 100%;
+            margin-top: 16px;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .submit-btn:hover {
+            opacity: 0.9;
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .sql-preview {
+            background: #1a1a2e;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .sql-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: rgba(99, 102, 241, 0.1);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sql-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--primary);
+        }
+
+        .sql-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .sql-action-btn {
+            padding: 6px 10px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .sql-action-btn:hover {
+            background: var(--bg-input);
+        }
+
+        .sql-content {
+            padding: 16px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+            line-height: 1.8;
+            color: #e2e8f0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .sql-content .keyword { color: #c792ea; }
+        .sql-content .string { color: #c3e88d; }
+        .sql-content .number { color: #f78c6c; }
+        .sql-content .comment { color: #546e7a; }
+        .sql-content .function { color: #82aaff; }
+
+        .explanation {
+            margin-top: 16px;
+            padding: 12px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 8px;
+            font-size: 13px;
+            color: #6ee7b7;
+        }
+
+        .results-container {
+            margin-top: 20px;
+        }
+
+        .results-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .results-stats {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .results-table th,
+        .results-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .results-table th {
+            background: var(--bg-input);
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .results-table td {
+            color: var(--text);
+        }
+
+        .results-table tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .loading-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            gap: 16px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .error-state {
+            padding: 20px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 10px;
+            color: #fca5a5;
+            font-size: 14px;
+        }
+
+        .complexity-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .complexity-simple {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+        }
+
+        .complexity-medium {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+        }
+
+        .complexity-complex {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+        }
+
+        .confidence-bar {
+            height: 4px;
+            background: var(--bg-input);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success), var(--warning));
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        .history-panel {
+            grid-column: 1 / -1;
+            margin-top: 20px;
+        }
+
+        .history-list {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+
+        .history-item {
+            flex-shrink: 0;
+            padding: 10px 16px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .history-item:hover {
+            background: var(--bg-card);
+            border-color: var(--primary);
+        }
+
+        .history-item-question {
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .history-item-sql {
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-family: monospace;
+        }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                        <path d="M2 17l10 5 10-5"/>
+                        <path d="M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <h1>Text-to-SQL</h1>
+                    <p>智能查询系统</p>
+                </div>
+            </div>
+            <div class="db-selector">
+                <label>数据库:</label>
+                <select id="dbSelect">
+                    <option value="sales_db">销售数据库 (sales_db)</option>
+                </select>
+            </div>
+        </header>
+
+        <div class="main-grid">
+            <!-- 左侧：输入区域 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        自然语言查询
+                    </div>
+                </div>
+
+                <div class="query-input-container">
+                    <textarea
+                        id="queryInput"
+                        class="query-input"
+                        placeholder="输入您的查询问题，例如：&#10;• 查询销售额最高的前10个产品&#10;• 统计每个城市的客户数量&#10;• 查找今年第一季度所有已完成订单"
+                    ></textarea>
+                </div>
+
+                <div class="quick-actions">
+                    <button class="quick-action-btn" onclick="setExample(0)">📊 销售额Top10</button>
+                    <button class="quick-action-btn" onclick="setExample(1)">👥 客户统计</button>
+                    <button class="quick-action-btn" onclick="setExample(2)">📅 季度订单</button>
+                </div>
+
+                <button id="submitBtn" class="submit-btn" onclick="submitQuery()">
+                    <span id="btnText">生成 SQL</span>
+                </button>
+
+                <div id="loadingState" class="loading-state" style="display: none;">
+                    <div class="spinner"></div>
+                    <div class="loading-text" id="loadingText">正在分析问题...</div>
+                </div>
+
+                <div id="errorState" class="error-state" style="display: none;"></div>
+            </div>
+
+            <!-- 右侧：SQL 预览 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                        </svg>
+                        生成的 SQL
+                    </div>
+                    <div id="complexityBadge"></div>
+                </div>
+
+                <div class="sql-preview">
+                    <div class="sql-header">
+                        <span class="sql-title">SQL 查询</span>
+                        <div class="sql-actions">
+                            <button class="sql-action-btn" onclick="copySQL()">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                </svg>
+                                复制
+                            </button>
+                            <button class="sql-action-btn" onclick="editSQL()">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                                编辑
+                            </button>
+                        </div>
+                    </div>
+                    <div id="sqlContent" class="sql-content">
+                        <span style="color: var(--text-secondary);">请在左侧输入您的问题...</span>
+                    </div>
+                </div>
+
+                <div id="explanation" class="explanation" style="display: none;"></div>
+
+                <div style="margin-top: 16px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span style="font-size: 12px; color: var(--text-secondary);">置信度</span>
+                        <span id="confidenceValue" style="font-size: 12px; color: var(--primary);">0%</span>
+                    </div>
+                    <div class="confidence-bar">
+                        <div id="confidenceFill" class="confidence-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 查询结果 -->
+            <div class="card results-container" style="grid-column: 1 / -1;">
+                <div class="results-header">
+                    <div class="card-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="20" x2="18" y2="10"/>
+                            <line x1="12" y1="20" x2="12" y2="4"/>
+                            <line x1="6" y1="20" x2="6" y2="14"/>
+                        </svg>
+                        查询结果
+                    </div>
+                    <div id="resultsStats" class="results-stats"></div>
+                </div>
+
+                <div id="resultsContent">
+                    <p style="color: var(--text-secondary); text-align: center; padding: 40px;">
+                        执行查询后，结果将显示在这里
+                    </p>
+                </div>
+            </div>
+
+            <!-- 历史记录 -->
+            <div class="card history-panel">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        历史查询
+                    </div>
+                </div>
+                <div id="historyList" class="history-list">
+                    <p style="color: var(--text-secondary);">暂无历史记录</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 示例问题
+        const examples = [
+            "查询销售额最高的前10个产品",
+            "统计每个城市的客户数量",
+            "查询今年第一季度所有已完成订单"
+        ];
+
+        // 查询历史
+        const queryHistory = [];
+
+        function setExample(index) {
+            document.getElementById('queryInput').value = examples[index];
+        }
+
+        async function submitQuery() {
+            const question = document.getElementById('queryInput').value.trim();
+            if (!question) {
+                showError('请输入您的问题');
+                return;
+            }
+
+            const dbSelect = document.getElementById('dbSelect').value;
+            const submitBtn = document.getElementById('submitBtn');
+            const loadingState = document.getElementById('loadingState');
+            const errorState = document.getElementById('errorState');
+
+            // UI 状态更新
+            submitBtn.disabled = true;
+            document.getElementById('btnText').textContent = '生成中...';
+            loadingState.style.display = 'flex';
+            errorState.style.display = 'none';
+
+            try {
+                // 模拟 API 调用
+                await simulateAPI(question, dbSelect);
+            } catch (error) {
+                showError('查询失败: ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                document.getElementById('btnText').textContent = '生成 SQL';
+                loadingState.style.display = 'none';
+            }
+        }
+
+        async function simulateAPI(question, dbName) {
+            // 模拟网络延迟
+            await delay(800);
+
+            const loadingText = document.getElementById('loadingText');
+            loadingText.textContent = '正在分析问题...';
+
+            await delay(600);
+            loadingText.textContent = '正在检索相关表结构...';
+
+            await delay(600);
+            loadingText.textContent = '正在生成 SQL 查询...';
+
+            await delay(800);
+
+            // 模拟 SQL 生成结果
+            const result = mockGenerateSQL(question);
+
+            // 显示结果
+            displayResult(result);
+
+            // 添加到历史
+            addToHistory(question, result.sql);
+        }
+
+        function mockGenerateSQL(question) {
+            // 简单的模拟 SQL 生成
+            const questionLower = question.toLowerCase();
+
+            if (questionLower.includes('销售额') && questionLower.includes('top') || questionLower.includes('前')) {
+                return {
+                    sql: `SELECT
+    p.product_name,
+    SUM(oi.quantity) as total_quantity,
+    SUM(oi.subtotal) as total_sales
+FROM products p
+JOIN order_items oi ON p.product_id = oi.product_id
+JOIN orders o ON oi.order_id = o.order_id
+WHERE o.status = 'completed'
+GROUP BY p.product_id, p.product_name
+ORDER BY total_sales DESC
+LIMIT 10;`,
+                    explanation: '这个查询统计了每个产品的销售总额，并按销售额降序排列，返回前10个最畅销的产品。',
+                    confidence: 0.92,
+                    complexity: 'medium',
+                    tables: ['products', 'order_items', 'orders']
+                };
+            } else if (questionLower.includes('客户') && (questionLower.includes('统计') || questionLower.includes('数量'))) {
+                return {
+                    sql: `SELECT
+    c.city,
+    c.country,
+    COUNT(DISTINCT c.customer_id) as customer_count
+FROM customers c
+GROUP BY c.city, c.country
+ORDER BY customer_count DESC;`,
+                    explanation: '这个查询按城市和国家分组，统计每个地区的客户数量，并按客户数量降序排列。',
+                    confidence: 0.95,
+                    complexity: 'simple',
+                    tables: ['customers']
+                };
+            } else if (questionLower.includes('订单') && (questionLower.includes('季度') || questionLower.includes('第一季度'))) {
+                return {
+                    sql: `SELECT
+    o.order_id,
+    c.customer_name,
+    o.order_date,
+    o.total_amount
+FROM orders o
+JOIN customers c ON o.customer_id = c.customer_id
+WHERE o.status = 'completed'
+  AND o.order_date >= DATE_TRUNC('quarter', CURRENT_DATE)
+  AND o.order_date < DATE_TRUNC('quarter', CURRENT_DATE) + INTERVAL '3 months'
+ORDER BY o.order_date DESC;`,
+                    explanation: '这个查询查找今年第一季度的所有已完成订单，包括订单ID、客户名称、订单日期和总金额。',
+                    confidence: 0.88,
+                    complexity: 'medium',
+                    tables: ['orders', 'customers']
+                };
+            }
+
+            // 默认查询
+            return {
+                sql: `SELECT * FROM products LIMIT 10;`,
+                explanation: '查询产品列表（示例查询）',
+                confidence: 0.75,
+                complexity: 'simple',
+                tables: ['products']
+            };
+        }
+
+        function displayResult(result) {
+            // 显示 SQL
+            const sqlContent = document.getElementById('sqlContent');
+            sqlContent.innerHTML = highlightSQL(result.sql);
+
+            // 显示解释
+            const explanation = document.getElementById('explanation');
+            explanation.textContent = result.explanation;
+            explanation.style.display = 'block';
+
+            // 显示复杂度
+            const complexityBadge = document.getElementById('complexityBadge');
+            complexityBadge.innerHTML = `<span class="complexity-badge complexity-${result.complexity}">
+                ${result.complexity === 'simple' ? '简单' : result.complexity === 'medium' ? '中等' : '复杂'}
+            </span>`;
+
+            // 显示置信度
+            const confidencePercent = Math.round(result.confidence * 100);
+            document.getElementById('confidenceValue').textContent = confidencePercent + '%';
+            document.getElementById('confidenceFill').style.width = confidencePercent + '%';
+
+            // 模拟查询结果
+            displayMockResults(result);
+        }
+
+        function displayMockResults(result) {
+            const resultsContent = document.getElementById('resultsContent');
+            const resultsStats = document.getElementById('resultsStats');
+
+            // 模拟结果数据
+            let mockData = [];
+            let columns = [];
+
+            if (result.sql.includes('products') && result.sql.includes('order_items')) {
+                columns = ['产品名称', '总数量', '总销售额'];
+                mockData = [
+                    ['iPhone 15 Pro', '1,234', '¥1,234,000'],
+                    ['MacBook Pro', '856', '¥1,712,000'],
+                    ['AirPods Pro', '2,345', '¥469,000'],
+                    ['iPad Air', '1,123', '¥561,500'],
+                    ['Apple Watch', '987', '¥296,100'],
+                ];
+            } else if (result.sql.includes('customers') && result.sql.includes('GROUP BY')) {
+                columns = ['城市', '国家', '客户数量'];
+                mockData = [
+                    ['北京', '中国', '1,234'],
+                    ['上海', '中国', '987'],
+                    ['深圳', '中国', '765'],
+                    ['广州', '中国', '654'],
+                    ['杭州', '中国', '543'],
+                ];
+            } else {
+                columns = ['ID', '名称', '类别', '价格'];
+                mockData = [
+                    ['1', 'iPhone 15 Pro', '手机', '¥7,999'],
+                    ['2', 'MacBook Pro', '电脑', '¥14,999'],
+                    ['3', 'AirPods Pro', '耳机', '¥1,999'],
+                ];
+            }
+
+            // 显示统计
+            resultsStats.textContent = `共 ${mockData.length} 条记录`;
+
+            // 显示表格
+            let tableHTML = '<table class="results-table"><thead><tr>';
+            columns.forEach(col => {
+                tableHTML += `<th>${col}</th>`;
+            });
+            tableHTML += '</tr></thead><tbody>';
+
+            mockData.forEach(row => {
+                tableHTML += '<tr>';
+                row.forEach(cell => {
+                    tableHTML += `<td>${cell}</td>`;
+                });
+                tableHTML += '</tr>';
+            });
+
+            tableHTML += '</tbody></table>';
+            resultsContent.innerHTML = tableHTML;
+        }
+
+        function highlightSQL(sql) {
+            // 简单的 SQL 语法高亮
+            const keywords = ['SELECT', 'FROM', 'WHERE', 'JOIN', 'LEFT', 'RIGHT', 'INNER', 'OUTER',
+                            'ON', 'AND', 'OR', 'NOT', 'IN', 'LIKE', 'BETWEEN',
+                            'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT', 'OFFSET',
+                            'AS', 'DESC', 'ASC', 'DISTINCT', 'COUNT', 'SUM', 'AVG', 'MAX', 'MIN'];
+
+            let highlighted = sql;
+
+            keywords.forEach(keyword => {
+                const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+                highlighted = highlighted.replace(regex, `<span class="keyword">${keyword}</span>`);
+            });
+
+            // 字符串
+            highlighted = highlighted.replace(/'([^']*)'/g, '<span class="string">\'$1\'</span>');
+
+            // 数字
+            highlighted = highlighted.replace(/\b(\d+)\b/g, '<span class="number">$1</span>');
+
+            return highlighted;
+        }
+
+        function addToHistory(question, sql) {
+            queryHistory.unshift({ question, sql, timestamp: Date.now() });
+
+            // 保留最近 10 条
+            if (queryHistory.length > 10) {
+                queryHistory.pop();
+            }
+
+            updateHistoryDisplay();
+        }
+
+        function updateHistoryDisplay() {
+            const historyList = document.getElementById('historyList');
+
+            if (queryHistory.length === 0) {
+                historyList.innerHTML = '<p style="color: var(--text-secondary);">暂无历史记录</p>';
+                return;
+            }
+
+            historyList.innerHTML = queryHistory.map((item, index) => `
+                <div class="history-item" onclick="loadFromHistory(${index})">
+                    <div class="history-item-question">${item.question}</div>
+                    <div class="history-item-sql">${item.sql.substring(0, 50)}...</div>
+                </div>
+            `).join('');
+        }
+
+        function loadFromHistory(index) {
+            const item = queryHistory[index];
+            document.getElementById('queryInput').value = item.question;
+            submitQuery();
+        }
+
+        function showError(message) {
+            const errorState = document.getElementById('errorState');
+            errorState.textContent = message;
+            errorState.style.display = 'block';
+        }
+
+        function copySQL() {
+            const sqlContent = document.getElementById('sqlContent').textContent;
+            navigator.clipboard.writeText(sqlContent).then(() => {
+                // 简单的复制成功提示
+                const btn = event.target.closest('.sql-action-btn');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✓ 已复制';
+                setTimeout(() => btn.innerHTML = originalText, 1500);
+            });
+        }
+
+        function editSQL() {
+            const sqlContent = document.getElementById('sqlContent').textContent;
+            const newSQL = prompt('编辑 SQL:', sqlContent);
+            if (newSQL !== null && newSQL !== sqlContent) {
+                document.getElementById('sqlContent').innerHTML = highlightSQL(newSQL);
+            }
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // 键盘快捷键
+        document.getElementById('queryInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                submitQuery();
+            }
+        });
+
+        // 初始化
+        updateHistoryDisplay();
+    </script>
+</body>
+</html>
