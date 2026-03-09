@@ -1,0 +1,35 @@
+{
+  "timestamp": "2026-03-05T15:16:27.748926",
+  "base_url": "http://localhost:8000",
+  "results": [
+    {
+      "name": "健康检查",
+      "passed": true
+    },
+    {
+      "name": "首页加载",
+      "passed": true
+    },
+    {
+      "name": "知识库统计",
+      "passed": true
+    },
+    {
+      "name": "SQL 导入",
+      "passed": true
+    },
+    {
+      "name": "SQL 生成",
+      "passed": true
+    },
+    {
+      "name": "安全验证",
+      "passed": true
+    }
+  ],
+  "summary": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0
+  }
+}
